@@ -1,7 +1,7 @@
 # measure-water-esp-blynk-ota
 
 Vasstank-overvaking på ein WeMos D1 mini (ESP8266): 4–20 mA trykksensor → 0–1000
-liter → Blynk. E-postvarsel + relé (pumpevern) ved låge nivå. **Oppdatering på
+liter → Blynk. E-post- og Homey-varsel + relé (pumpevern) ved låge nivå. **Oppdatering på
 avstand via HTTP-pull OTA**, utløyst frå ein knapp i Blynk-appen.
 
 > Status: OTA-flyten (Blynk-knapp → GitHub-release → self-flash) er **verifisert
@@ -23,6 +23,9 @@ Kopier `config.json.example` → `data/config.json` (gitignorert) og fyll inn:
 - `wifi_ssid` / `wifi_password`
 - `blynk_token` — Auth Token frå **device-en** (Device Info)
 - `smtp_*` — valfritt; tomt `smtp_host` hoppar over e-post
+- `homey_webhook_url` — valfritt; Homey sky-webhook (Flow → NÅR: Logikk
+  «webhook event mottatt» → kopier ⓘ-URL-en). Tomt = av. Eininga legg sjølv
+  på `?tag=<melding>`, t.d. `Vanntanknivaa er lavt (1540 L)`.
 - `firmware_url` — peikar på «latest release» i dette repoet
 
 `include/config.h` har berre `BLYNK_TEMPLATE_ID`/`NAME` (kompileringskrav, ikkje
