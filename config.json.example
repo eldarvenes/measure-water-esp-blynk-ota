@@ -8,5 +8,6 @@
   "author_password": "FYLL_INN",
   "recipient_email": "FYLL_INN",
   "recipient_email2": "FYLL_INN",
-  "firmware_url": "https://github.com/eldarvenes/measure-water-esp-blynk-ota/releases/latest/download/firmware.bin"
+  "firmware_url": "https://github.com/eldarvenes/measure-water-esp-blynk-ota/releases/latest/download/firmware.bin",
+  "homey_webhook_url": "https://webhook.homey.app/DIN_HOMEY_ID/water_alert"
 }

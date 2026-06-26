@@ -15,9 +15,10 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <ESP8266httpUpdate.h>
+#include <ESP8266HTTPClient.h>
 
 #define DEVICE      "ESP8266"
-#define FW_VERSION  "2026-06-26.2"   // bump for kvar release - berre for logging
+#define FW_VERSION  "2026-06-26.3"   // bump for kvar release - berre for logging
 
 #define VPIN_LEVEL  V5               // nivaverdi (liter) -> Blynk
 #define VPIN_OTA    V10              // knapp i Blynk-appen som utloyser OTA
@@ -26,6 +27,7 @@
 String cfgWifiSsid, cfgWifiPass, cfgBlynkToken;
 String cfgSmtpHost, cfgAuthorEmail, cfgAuthorPass, cfgRecip1, cfgRecip2;
 String cfgFirmwareUrl;
+String cfgHomeyUrl;             // Homey sky-webhook (tom = av)
 int    cfgSmtpPort = 465;
 
 // ---------- pinnar ----------
@@ -55,6 +57,8 @@ void checkIfWarningShouldBeSent(float level);
 void resetWarning(float level);
 void printDebug();
 void sendEmail(float msg, String textMsg);
+void sendHomey(float level, String textMsg);
+String urlEncode(const String& s);
 
 void setup() {
   Serial.begin(115200);
@@ -145,6 +149,7 @@ bool loadConfig() {
   cfgRecip1      = (const char*)(doc["recipient_email"]  | "");
   cfgRecip2      = (const char*)(doc["recipient_email2"] | "");
   cfgFirmwareUrl = (const char*)(doc["firmware_url"]     | "");
+  cfgHomeyUrl    = (const char*)(doc["homey_webhook_url"] | "");
   Serial.println("config.json lasta OK");
   return true;
 }
@@ -210,7 +215,7 @@ void readAndSend() {
 
 void checkIfCriticalLevel(float level) {
   if (level < criticalLimitLow && criticalWarningSent == false) {
-    sendEmail(level, "Vanntanknivaa er kritisk lavt, pumpe er skrudd av!");
+    sendEmail(level, "Vanntanknivaa er kritisk lavt!");
     Serial.println("send email critical");
     criticalWarningSent = true;
     digitalWrite(criticalLed, HIGH);
@@ -245,6 +250,9 @@ void printDebug() {
 }
 
 void sendEmail(float msg, String textMsg) {
+  // Same varsel til Homey, uavhengig av om SMTP er sett opp.
+  sendHomey(msg, textMsg);
+
   if (cfgSmtpHost.length() == 0) {
     Serial.println("SMTP ikkje konfigurert - hoppar over e-post");
     return;
@@ -267,7 +275,8 @@ void sendEmail(float msg, String textMsg) {
   message.sender.email = cfgAuthorEmail;
   message.subject      = result;
   message.addRecipient("Mottakar 1", cfgRecip1);
-  message.addRecipient("Mottakar 2", cfgRecip2);
+  if (cfgRecip2.length() > 0)            // tom mottakar-2 kan få Gmail til å avvise heile meldinga
+    message.addRecipient("Mottakar 2", cfgRecip2);
 
   message.text.content           = textMsg.c_str();
   message.text.charSet           = "us-ascii";
@@ -283,4 +292,47 @@ void sendEmail(float msg, String textMsg) {
 
   if (!MailClient.sendMail(&smtp, &message))
     Serial.println("Error sending Email, " + smtp.errorReason());
+}
+
+// Prosent-enkodar alt som ikkje er bokstav/tal, så meldinga trygt kan stå i ?tag=
+// (mellomrom, æøå og emoji blir korrekt UTF-8-enkoda byte for byte).
+String urlEncode(const String& s) {
+  String out;
+  const char* hex = "0123456789ABCDEF";
+  for (size_t i = 0; i < s.length(); i++) {
+    unsigned char c = (unsigned char)s[i];
+    if (isalnum(c)) {
+      out += (char)c;
+    } else {
+      out += '%';
+      out += hex[(c >> 4) & 0x0F];
+      out += hex[c & 0x0F];
+    }
+  }
+  return out;
+}
+
+// Varsel til Homey via sky-webhook (Logic "webhook event mottatt"). Meldinga
+// går på ?tag=, tilgjengeleg som token i Homey-flowen. Feilar stille (loggar
+// berre) så Homey-trøbbel aldri stoppar resten av varslinga.
+void sendHomey(float level, String textMsg) {
+  if (cfgHomeyUrl.length() == 0) {
+    Serial.println("Homey-webhook ikkje konfigurert - hoppar over");
+    return;
+  }
+  char lvl[8];
+  dtostrf(level, 0, 0, lvl);                  // heiltal liter
+  String tag = textMsg + " (" + lvl + " L)";
+  String url = cfgHomeyUrl + "?tag=" + urlEncode(tag);
+
+  WiFiClientSecure client;
+  client.setInsecure();                       // hobby/privat - hopp over cert-validering
+  HTTPClient https;
+  if (https.begin(client, url)) {
+    int code = https.GET();
+    Serial.printf("Homey-webhook: HTTP %d\n", code);
+    https.end();
+  } else {
+    Serial.println("Homey-webhook: begin() feila");
+  }
 }
