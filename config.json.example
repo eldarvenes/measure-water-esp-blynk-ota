@@ -1,0 +1,12 @@
+{
+  "wifi_ssid": "FYLL_INN",
+  "wifi_password": "FYLL_INN",
+  "blynk_token": "FYLL_INN",
+  "smtp_host": "FYLL_INN",
+  "smtp_port": 465,
+  "author_email": "FYLL_INN",
+  "author_password": "FYLL_INN",
+  "recipient_email": "FYLL_INN",
+  "recipient_email2": "FYLL_INN",
+  "firmware_url": "https://github.com/eldarvenes/measure-water-esp-blynk-ota/releases/latest/download/firmware.bin"
+}

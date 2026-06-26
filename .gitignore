@@ -1,0 +1,8 @@
+# PlatformIO byggje-artefaktar
+.pio/
+
+# Ekte secrets - berre eksempelet (config.json.example) sjekkast inn
+data/config.json
+
+# Lokale notat - ikkje til GitHub
+STATUS.md
